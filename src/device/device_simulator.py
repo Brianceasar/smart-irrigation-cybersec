@@ -14,7 +14,16 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(COMMAND_TOPIC)
     
 def on_message(client, userdata, msg):
-    print(f"[!] Command recieved: {msg.payload.decode()}")
+    def on_message(client, userdata, msg):
+    command = msg.payload.decode()
+    print(f"[!] Command received: {command}")
+
+    if command == "PUMP_ON":
+        print("[!!!] Irrigation pump ACTIVATED")
+    elif command == "PUMP_OFF":
+        print("[---] Irrigation pump DEACTIVATED")
+    else:
+        print("[?] Unknown command received")
     
 client = mqtt.Client()
 client.on_connect = on_connect
