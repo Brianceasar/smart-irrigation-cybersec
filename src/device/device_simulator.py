@@ -33,8 +33,20 @@ client.loop_start()
 
 while True:
     soil_moisture = random.randint(30, 80)
-    payload = f"{DEVICE_ID}:{soil_moisture}"
-    print(f"[+] Publishing soil moisture: {payload}")
-    client.publish(SOIL_TOPIC, payload)
-    print(f"[+] Published: {payload}")
+
+    payload = {
+        "device_id": DEVICE_ID,
+        "soil_moisture": soil_moisture,
+        "timestamp": time.time()
+    }
+
+    print(f"[+] Publishing: {payload}")
+
+    client.publish(SOIL_TOPIC, json.dumps(payload))
+
+    if soil_moisture < 40:
+        print("[AUTO] Soil dry → Pump ON")
+    elif soil_moisture > 70:
+        print("[AUTO] Soil wet → Pump OFF")
+
     time.sleep(5)
