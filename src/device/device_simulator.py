@@ -1,53 +1,78 @@
+#!/usr/bin/env python3
+
 import paho.mqtt.client as mqtt
+import json
 import time
 import random
-import json
 
-BROKER = "172.16.187.130"
-PORT = 1883
+# ===============================
+# Configuration
+# ===============================
+
+BROKER_IP = "172.16.187.130"   # Your Ubuntu Server IP
+BROKER_PORT = 1883
+TOPIC = "irrigation/soil"
 
 DEVICE_ID = "irrigation-node-01"
-SOIL_TOPIC = "irrigation/soil"
-COMMAND_TOPIC = "irrigation/command"
+MOISTURE_THRESHOLD = 50
+
+# ===============================
+# MQTT Setup
+# ===============================
+
+client = mqtt.Client()
 
 def on_connect(client, userdata, flags, rc):
-    print("[+] connected to broker")
-    client.subscribe(COMMAND_TOPIC)
-    
-def on_message(client, userdata, msg):
-    command = msg.payload.decode()
-    print(f"[!] Command received: {command}")
-
-    if command == "PUMP_ON":
-        print("[!!!] Irrigation pump ACTIVATED")
-    elif command == "PUMP_OFF":
-        print("[---] Irrigation pump DEACTIVATED")
+    if rc == 0:
+        print("[+] Connected to MQTT Broker")
     else:
-        print("[?] Unknown command received")
-    
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
+        print("[-] Failed to connect")
 
-client.connect(BROKER, PORT, 60)
+client.on_connect = on_connect
+
+client.connect(BROKER_IP, BROKER_PORT, 60)
+
 client.loop_start()
 
-while True:
-    soil_moisture = random.randint(30, 80)
+# ===============================
+# Simulation Loop
+# ===============================
 
-    payload = {
-        "device_id": DEVICE_ID,
-        "soil_moisture": soil_moisture,
-        "timestamp": time.time()
-    }
+try:
+    while True:
+        # Simulate soil moisture reading
+        soil_moisture = random.randint(20, 90)
 
-    print(f"[+] Publishing: {payload}")
+        # Automatic pump logic
+        if soil_moisture < MOISTURE_THRESHOLD:
+            pump_state = "ON"
+            print("[AUTO] Soil dry → Pump ON")
+        else:
+            pump_state = "OFF"
+            print("[AUTO] Soil wet → Pump OFF")
 
-    client.publish(SOIL_TOPIC, json.dumps(payload))
+        # Construct JSON payload
+        payload = {
+            "device_id": DEVICE_ID,
+            "soil_moisture": soil_moisture,
+            "pump_state": pump_state,
+            "timestamp": time.time()
+        }
 
-    if soil_moisture < 40:
-        print("[AUTO] Soil dry → Pump ON")
-    elif soil_moisture > 70:
-        print("[AUTO] Soil wet → Pump OFF")
+        # Convert to valid JSON
+        message = json.dumps(payload)
 
-    time.sleep(5)
+        # Publish
+        client.publish(TOPIC, message)
+
+        print(f"[+] Publishing: {message}")
+        print("-" * 50)
+
+        time.sleep(5)
+
+except KeyboardInterrupt:
+    print("\n[!] Simulation stopped")
+
+finally:
+    client.loop_stop()
+    client.disconnect()
