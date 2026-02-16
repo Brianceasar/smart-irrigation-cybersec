@@ -14,7 +14,6 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe(COMMAND_TOPIC)
     
 def on_message(client, userdata, msg):
-    def on_message(client, userdata, msg):
     command = msg.payload.decode()
     print(f"[!] Command received: {command}")
 
