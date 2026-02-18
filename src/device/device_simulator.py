@@ -9,16 +9,18 @@ import random
 # Configuration
 # ===============================
 
-BROKER_IP = "172.16.187.130"   # Your Ubuntu Server IP
+BROKER_IP = "172.16.187.130"
 BROKER_PORT = 1883
-SOIL_TOPIC = "irrigation/soil"
-CONTROL_TOPIC = "irrigation/control"
+
+TOPIC_DATA = "irrigation/soil"
+TOPIC_CONTROL = "irrigation/control"
+TOPIC_MODE = "irrigation/mode"
 
 DEVICE_ID = "irrigation-node-01"
 MOISTURE_THRESHOLD = 50
 
-manual_override = False
-manual_state = None 
+pump_state = "OFF"
+system_mode = "AUTO"
 
 # ===============================
 # MQTT Callbacks
@@ -27,46 +29,46 @@ manual_state = None
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("[+] Connected to MQTT Broker")
-        client.subscribe(CONTROL_TOPIC)
+        client.subscribe(TOPIC_CONTROL)
+        client.subscribe(TOPIC_MODE)
     else:
         print("[-] Connection failed")
 
 def on_message(client, userdata, msg):
-    global manual_override, manual_state
+    global pump_state
+    global system_mode
 
     try:
         data = json.loads(msg.payload.decode())
 
-        if data.get("command") == "ON":
-            manual_override = True
-            manual_state = "ON"
-            print("[MANUAL] Pump forced ON")
+        # Handle Mode Change
+        if msg.topic == TOPIC_MODE:
+            system_mode = data.get("mode", "AUTO")
+            print(f"[MODE] Changed to {system_mode}")
 
-        elif data.get("command") == "OFF":
-            manual_override = True
-            manual_state = "OFF"
-            print("[MANUAL] Pump forced OFF")
+        # Handle Manual Pump Control
+        elif msg.topic == TOPIC_CONTROL and system_mode == "MANUAL":
+            command = data.get("command")
 
-        elif data.get("command") == "AUTO":
-            manual_override = False
-            manual_state = None
-            print("[MANUAL] Returning to automatic mode")
+            if command == "ON":
+                pump_state = "ON"
+            elif command == "OFF":
+                pump_state = "OFF"
+
+            print(f"[MANUAL] Pump forced {pump_state}")
 
     except Exception as e:
-        print("Error processing control message:", e)
-
+        print("Error:", e)
 
 # ===============================
 # MQTT Setup
 # ===============================
 
 client = mqtt.Client()
-
 client.on_connect = on_connect
 client.on_message = on_message
 
 client.connect(BROKER_IP, BROKER_PORT, 60)
-
 client.loop_start()
 
 # ===============================
@@ -75,16 +77,14 @@ client.loop_start()
 
 try:
     while True:
+
         soil_moisture = random.randint(20, 90)
         temperature = random.randint(18, 35)
         humidity = random.randint(40, 90)
         water_level = random.randint(30, 100)
 
-        if manual_override:
-            pump_state = manual_state
-            print(f"[OVERRIDE] Pump state: {pump_state}")
-
-        else:
+        # Automatic logic only when in AUTO mode
+        if system_mode == "AUTO":
             if soil_moisture < MOISTURE_THRESHOLD:
                 pump_state = "ON"
                 print("[AUTO] Soil dry → Pump ON")
@@ -99,16 +99,13 @@ try:
             "humidity": humidity,
             "water_level": water_level,
             "pump_state": pump_state,
-            "mode": "Automatic",
-            "led_state": pump_state,
+            "mode": system_mode,
             "timestamp": time.time()
         }
 
-        message = json.dumps(payload)
+        client.publish(TOPIC_DATA, json.dumps(payload))
 
-        client.publish(SOIL_TOPIC, message)
-
-        print(f"[+] Publishing: {message}")
+        print(f"[DATA] {payload}")
         print("-" * 60)
 
         time.sleep(5)
