@@ -76,6 +76,9 @@ client.loop_start()
 try:
     while True:
         soil_moisture = random.randint(20, 90)
+        temperature = random.randint(18, 35)
+        humidity = random.randint(40, 90)
+        water_level = random.randint(30, 100)
 
         if manual_override:
             pump_state = manual_state
@@ -92,8 +95,12 @@ try:
         payload = {
             "device_id": DEVICE_ID,
             "soil_moisture": soil_moisture,
+            "temperature": temperature,
+            "humidity": humidity,
+            "water_level": water_level,
             "pump_state": pump_state,
-            "mode": "MANUAL" if manual_override else "AUTO",
+            "mode": "Automatic",
+            "led_state": pump_state,
             "timestamp": time.time()
         }
 
