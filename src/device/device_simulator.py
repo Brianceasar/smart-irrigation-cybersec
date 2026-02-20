@@ -26,10 +26,10 @@ system_mode = "AUTO"
 # Environmental State (PERSISTENT)
 # ===============================
 
-soil_moisture = 55.0
-temperature = 28.0
+soil_moisture = 0.0
+temperature = 30.0
 humidity = 60.0
-water_level = 80.0
+water_level = 100.0
 
 # ===============================
 # MQTT Callbacks
@@ -90,21 +90,21 @@ try:
         # ===============================
         # Environmental drift
         # ===============================
-        temperature += random.uniform(-0.3, 0.3)
-        humidity += random.uniform(-0.8, 0.8)
+        temperature += random.uniform(-0.2, 0.4)
+        humidity += random.uniform(-1.0, 0.5)
 
-        temperature = max(15, min(45, temperature))
-        humidity = max(20, min(95, humidity))
+        temperature = max(28, min(38, temperature))
+        humidity = max(30, min(85, humidity))
 
         # ===============================
         # Soil physics model
         # ===============================
-        if pump_state == "ON":
-            soil_moisture += 2.2
+        if pump_state == "ON" and water_level >5:
+            soil_moisture += 3.5
             water_level -= 0.4
         else:
             evap_rate = (temperature / 100.0) * (1 - humidity / 100.0)
-            soil_moisture -= evap_rate * 3.5
+            soil_moisture -= evap_rate * 8.0
 
         # slow natural refill of tank
         water_level += 0.05
